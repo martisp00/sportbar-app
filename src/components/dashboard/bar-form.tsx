@@ -114,33 +114,6 @@ export function BarForm({ bar }: { bar: Bar | null }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="latitude" className={labelClass}>Latitude</label>
-          <input
-            id="latitude"
-            name="latitude"
-            type="number"
-            step="any"
-            defaultValue={bar?.latitude ?? ''}
-            className={inputClass}
-            placeholder="41.3851"
-          />
-        </div>
-        <div>
-          <label htmlFor="longitude" className={labelClass}>Longitude</label>
-          <input
-            id="longitude"
-            name="longitude"
-            type="number"
-            step="any"
-            defaultValue={bar?.longitude ?? ''}
-            className={inputClass}
-            placeholder="2.1734"
-          />
-        </div>
-      </div>
-
       {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
           {error}

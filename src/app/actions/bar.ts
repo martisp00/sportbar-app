@@ -11,12 +11,18 @@ function toSlug(value: string) {
     .replace(/^-|-$/g, '')
 }
 
-function toLocation(lat: FormDataEntryValue | null, lng: FormDataEntryValue | null): string | null {
-  const latN = parseFloat(lat as string)
-  const lngN = parseFloat(lng as string)
-  if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return null
-  // PostGIS WKT geography: longitude comes first
-  return `POINT(${lngN} ${latN})`
+async function geocode(address: string, city: string): Promise<string | null> {
+  const q = encodeURIComponent(`${address}, ${city}, Spain`)
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`,
+    { headers: { 'User-Agent': 'sportbar-app/1.0' } }
+  )
+  if (!res.ok) return null
+  const results: Array<{ lat: string; lon: string }> = await res.json()
+  if (!results.length) return null
+  const { lat, lon } = results[0]
+  // PostGIS WKT: longitude first
+  return `POINT(${lon} ${lat})`
 }
 
 export async function upsertBar(
@@ -27,24 +33,29 @@ export async function upsertBar(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const id = formData.get('id') as string | null
+  const address = formData.get('address') as string
+  const city = formData.get('city') as string
+
+  const locationWkt = await geocode(address, city)
+  if (!locationWkt) {
+    return 'Could not find coordinates for this address. Please check the address and city and try again.'
+  }
+
+  const id = (formData.get('id') as string) || null
   const name = formData.get('name') as string
   const slugRaw = (formData.get('slug') as string).trim()
 
-  const payload = {
-    owner_id: user.id,
-    name,
-    slug: slugRaw ? toSlug(slugRaw) : toSlug(name),
-    address: formData.get('address') as string,
-    city: formData.get('city') as string,
-    phone: (formData.get('phone') as string) || null,
-    description: (formData.get('description') as string) || null,
-    location: toLocation(formData.get('latitude'), formData.get('longitude')),
-  }
-
-  const { error } = id
-    ? await supabase.from('bars').update(payload).eq('id', id).eq('owner_id', user.id)
-    : await supabase.from('bars').insert(payload)
+  const { error } = await supabase.rpc('upsert_bar', {
+    p_id:           id,
+    p_owner_id:     user.id,
+    p_name:         name,
+    p_slug:         slugRaw ? toSlug(slugRaw) : toSlug(name),
+    p_address:      address,
+    p_city:         city,
+    p_phone:        (formData.get('phone') as string) || null,
+    p_description:  (formData.get('description') as string) || null,
+    p_location_wkt: locationWkt,
+  })
 
   if (error) return error.message
 
