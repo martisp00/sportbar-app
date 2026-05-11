@@ -11,12 +11,15 @@ export type BarEvent = {
   id: string
   title: string
   starts_at: string
+  sport_name: string
+  sport_id: string
 }
 
 export type BarWithEvents = {
   id: string
   name: string
   city: string
+  slug: string
   latitude: number
   longitude: number
   events: BarEvent[]
@@ -51,6 +54,7 @@ export function BarMap({ bars }: { bars: BarWithEvents[] }) {
                     <span className="font-medium">{ev.title}</span>
                     <br />
                     <span className="text-zinc-400">
+                      {ev.sport_name} ·{' '}
                       {new Date(ev.starts_at).toLocaleString(undefined, {
                         dateStyle: 'medium',
                         timeStyle: 'short',
