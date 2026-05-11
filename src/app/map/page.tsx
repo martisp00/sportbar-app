@@ -6,18 +6,16 @@ import type { BarWithEvents } from '@/components/map/bar-map'
 export default async function MapPage() {
   const supabase = await createClient()
 
-  // ST_Y = latitude, ST_X = longitude (PostGIS WKT is POINT(lng lat))
-  const { data: barsRaw } = await supabase
-    .from('bars')
-    .select(
-      'id, name, city, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude'
-    )
-    .not('location', 'is', null)
+  const { data: barsRaw, error: barsError } = await supabase
+    .rpc('get_bars_with_coordinates')
+
+  console.log('[map] bars:', barsRaw, 'error:', barsError)
 
   const bars = (barsRaw ?? []) as Array<{
     id: string
     name: string
     city: string
+    slug: string
     latitude: number
     longitude: number
   }>
@@ -33,10 +31,7 @@ export default async function MapPage() {
     const { data } = await supabase
       .from('sports_events')
       .select('id, bar_id, title, starts_at')
-      .in(
-        'bar_id',
-        bars.map((b) => b.id)
-      )
+      .in('bar_id', bars.map((b) => b.id))
       .gte('starts_at', new Date().toISOString())
       .order('starts_at')
 
